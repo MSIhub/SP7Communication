@@ -13,12 +13,20 @@ using namespace Eigen;
 
 #define SOFTSATURATION
 #define NUM_DATA 12
-// Imported from common to be aggiusted
+
+
+// Imported from common to be adjusted
 #ifdef M_PI
 static constexpr double pi = M_PI;
 #else
 #error "undefined M_PI"
 #endif
+
+
+
+
+
+
 using Vector6d = Eigen::Matrix<double, 6, 1>;
 
 constexpr double pi_180{pi / 180.};
@@ -54,139 +62,67 @@ private:
     Vector3d vel{ 0, 0, 0 };
     Vector3d theta_dot_h{ 0, 0, 0 };
 
+	double high_pass_kernel[KERNEL_LENGTH];
+	double low_pass_kernel[KERNEL_LENGTH];
+    bool init_run;
+    
+
+    //CueData
+	filtering::CueData* c_ax;
+	filtering::CueData* c_ay;
+	filtering::CueData* c_az;
+	filtering::CueData* c_tcx;
+	filtering::CueData* c_tcy;
+	filtering::CueDataVel* c_vroll;
+	filtering::CueDataVel* c_vpitch;
+	filtering::CueDataVel* c_vyaw;
+
+    //logging
+    bool log_data;
+	std::string delimiter = "\t"; //tab limited text file with 8 point precision
+    std::fstream log_fptr;
+    std::string log_filename = "log_data_";
 
 public:
-    void loadParams()
+    void loadParams();
+    void printParams();
+    McaFilter():init_run(true), log_data(true)
     {
-        std::string filename = "src/param.yaml";
-        std::ifstream param;
+        loadParams();
+		// Init CueData
+		c_ax = new filtering::CueData{};
+		c_ay = new filtering::CueData{};
+		c_az = new filtering::CueData{};
+		c_tcx = new filtering::CueData{};
+		c_tcy = new filtering::CueData{};
+		c_vroll = new filtering::CueDataVel{};
+		c_vpitch = new filtering::CueDataVel{};
+		c_vyaw = new filtering::CueDataVel{};
+        //
+        filtering::initial_time = 0.0;
 
+    #pragma region Log data
+		log_filename += std::to_string(std::time(nullptr));
+		log_filename += ".log";
+		log_fptr.open(log_filename, std::fstream::out | std::fstream::app);
+    #pragma endregion
 
-        param.open(filename);
-        if (!param.is_open())
-        {
-            std::cout << "file: " << filename << " could not open!" << std::endl;
-            return;
-        }
-
-        while (param)
-        {
-            std::string key;
-            double value;
-            std::getline(param, key, ':');
-            param >> value;
-            param.get(); // catch empty line
-            if (!param)
-                return;
-            paramMap[key] = value; //paramMap.insert(std::pair<std::string, float>(key, value));
-        }
-        param.close();
-        return;
     }
+    McaFilter(McaFilter &c) = delete; // deleting copy constructor
 
+    void logCommit() { mbf.commit(); }
+    Matrix3d angular_to_gimbal_matrix(double a1, double a2, double a3);
+    Matrix3d get_R_process(double roll, double pitch, double yaw);
+    Matrix3d get_T_process(double roll, double pitch, double yaw);
+    Vector3d tilt_cord(Vector3d f_L);
 
-    void printParams()
-    {
-        std::map<std::string, double>::iterator itr;
-        for (itr = paramMap.begin(); itr != paramMap.end(); ++itr)
-        {
-            std::cout << itr->first << ": " << itr->second << std::endl;
-        }
-    }
+    void calculateKernels();
+    void filtering(float data[NUM_DATA]);
+    void getData(double data[NUM_DATA]);
+    void reset();
+    void logFilteredData(double data[NUM_DATA], double timestamp);
 
-    McaFilter() {loadParams();}
-    McaFilter(McaFilter &c) = delete;
-
-  void logCommit() { mbf.commit(); }
-
-  Matrix3d angular_to_gimbal_matrix(double a1, double a2, double a3);
-  Matrix3d get_R_process(double roll, double pitch, double yaw);
-  Matrix3d get_T_process(double roll, double pitch, double yaw);
-  Vector3d tilt_cord(Vector3d f_L);
-
-  void filtering(float data[NUM_DATA])
-  {
-      tprev = t;
-      t = data[0]; // TODO We need some origin to start and convert t to relative
-                   // time
-      aprev = a;
-
-      double f_ggx = data[1]; // Specific force along x - it really is ax
-      double f_ggy = data[2]; // Specific force along x - it really is ax
-      double f_ggz = data[3]; // Specific force along x - it really is ax
-
-      double roll = data[4] * pi_180;
-      double pitch = data[5] * pi_180;
-      double yaw = data[6] * pi_180;
-
-      double vroll = data[7] * pi_180;
-      double vpitch = data[8] * pi_180;
-      double vyaw = data[9] * pi_180;
-
-      /*Insert filter logic here*/
-
-      pos[0] = 0.003;
-      pos[1] = 0.003;
-      pos[2] = 0.001 + 0.396;
-      a[0]=0.000;
-      a[1]=0.001;
-      a[2]=0.001;
-
-      vel[0]=0.400;
-      vel[1]=0.400;
-      vel[2]=0.000;
-      theta_dot_h[0]=0.000;
-      theta_dot_h[1]=0.000;
-      theta_dot_h[2]=0.00;
-
-      //std::cout << data[1] << ", " << data[2] << ", " << data[3] << ',' << data[4] << "," << data[5] << ',' << data[6] << "," << std::endl;
-
-      ////Testing without filtering
-      //pos[0] = data[1];
-      //pos[1] = data[2];
-      //pos[2] = data[3];
-      //a[0]= data[4];
-      //a[1]= data[5];
-      //a[2]= data[6];
-
-      //vel[0]=data[7];
-      //vel[1]=data[8];
-      //vel[2]=data[9];
-      //theta_dot_h[0]=data[10];
-      //theta_dot_h[1]=data[11];
-      //theta_dot_h[2]=data[12];
-  }
-
-  void getData(double data[NUM_DATA])
-  {
-    data[0] = pos[0];
-    data[1] = pos[1];
-    data[2] = pos[2];
-    data[3] = a[0];
-    data[4] = a[1];
-    data[5] = a[2];
-
-    data[6] = vel[0];
-    data[7] = vel[1];
-    data[8] = vel[2];
-    data[9] = theta_dot_h[0];
-    data[10] = theta_dot_h[1];
-    data[11] = theta_dot_h[2];
-  }
-
-  void reset()
-  {
-    t = 0.;
-    tprev = 0.;
-    a = Vector3d::Zero();
-    aprev = Vector3d::Zero();
-    pos = Vector3d::Zero();
-    vel = Vector3d::Zero();
-    theta_dot_h = Vector3d::Zero();
-
-  }
-
-
+    ~McaFilter() { log_fptr.close(); }
 };
 
 

@@ -186,11 +186,12 @@ public:
             control_sender_endpoint_,
             [this](std::error_code, std::size_t bytes_recvd) {
                 dataControl[bytes_recvd] = 0;
-                std::cout << dataControl << std::endl;
-                log->info(" # [{}] {}", bytes_recvd, dataControl);
+               // std::cout << dataControl << std::endl;
+                
 
                 if (strncmp(dataControl, "QUIT", 4) == 0)
                 {
+                    log->info(" # [{}] {}", bytes_recvd, dataControl);
                     //controlSocket.get_io_context().stop();
                     io_context.stop();
                     reply_to_control_socket("OK", 2);
@@ -198,7 +199,7 @@ public:
 
                 if (strncmp(dataControl, "CONN", 4) == 0)
                 {
-                    std::cout << "In connect\n";
+                    log->info(" # [{}] {}", bytes_recvd, dataControl);
                     log->info("Request Connection");
                     waitCnt = WAITVAL;
                     this->connect();
@@ -206,6 +207,7 @@ public:
 
                 if (strncmp(dataControl, "DISC", 4) == 0)
                 {
+                    log->info(" # [{}] {}", bytes_recvd, dataControl);
                     this->disconnect();
                     this->plugInSession = PlugInSession::IDLE;
                     this->state = ManagerState::IDLE;
@@ -213,14 +215,19 @@ public:
 
                 if (strncmp(dataControl, "STRT", 4) == 0)
                 {
-                    if (this->state == ManagerState::CONNECTED)
+                    if (!this->started)
                     {
-                        this->gracePeriod = NUM_IGNORED_SAMPLE;
-                        this->started = true;
-                        reply_to_control_socket("OK", 2);
+                        log->info(" # [{}] {}", bytes_recvd, dataControl);
+						if (this->state == ManagerState::CONNECTED)
+						{
+							this->gracePeriod = NUM_IGNORED_SAMPLE;
+							this->started = true;
+							reply_to_control_socket("OK", 2);
+						}
+						else
+							reply_to_control_socket("NO", 2);
                     }
-                    else
-                        reply_to_control_socket("NO", 2);
+                    
                 }
 
                 if (strncmp(dataControl, "STOP", 4) == 0)
@@ -228,6 +235,8 @@ public:
                     this->plugInSession = PlugInSession::IDLE;
                     if (this->state == ManagerState::CONNECTED)
                     {
+                        log->info(" # [{}] {}", bytes_recvd, dataControl);
+                        this->resetSp7();
                         this->started = false;
                         reply_to_control_socket("OK", 2);
                     }
@@ -237,6 +246,7 @@ public:
 
                 if (strncmp(dataControl, "STAT", 4) == 0)
                 {
+                    log->info(" # [{}] {}", bytes_recvd, dataControl);
                     std::string str
                         = fmt::format("msgReceived {} motionDataReceived {}",
                             msgReceived, motionDataCnt);
@@ -274,7 +284,7 @@ public:
             if (this->state == ManagerState::CONNECTED)
             {   
                 this->alive();
-                std::cout << "State" << (int)(this->state) << std::endl;
+                //std::cout << "State" << (int)(this->state) << std::endl;
             }
 
             if (this->state == ManagerState::WAITING_CONNECTED)
@@ -298,7 +308,7 @@ public:
         filterTimer.async_wait([this](std::error_code) {
             if (plugInSession == PlugInSession::CONNECTED)
             {
-                std::cout << "In filter connection" << std::endl;
+                //std::cout << "In filter connection" << std::endl;
                 float data[12]{};
                 float dt = (float)std::chrono::duration_cast<std::chrono::microseconds>(
                     std::chrono::steady_clock::now() - time_zero)
@@ -311,9 +321,8 @@ public:
 
                 mc.filtering(data);
                 mc.getData(filteredData);
+                mc.logFilteredData(filteredData, data[0]);
 
-
-                std::cout << filteredData[1] << ", " << filteredData[2] << ", " << filteredData[3] << ',' << filteredData[4] << "," << filteredData[5] << ',' << filteredData[6] << "," << std::endl;
                 log->info(" sr:  [{}] {} {}", dt, data[0], filteredData[0]);
                 if (gracePeriod > 0)
                 {

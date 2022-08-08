@@ -53,8 +53,8 @@ private:
 
     double t{};     // actual sample time
     double tprev{}; // previous sample time
-    double a_g{};
-    double b_g{};
+    double a_g{9.81};
+    double b_g{9.81};
 
     Vector3d aprev{ 0, 0, 0 };
     Vector3d a{ 0, 0, 0 };
@@ -111,6 +111,11 @@ public:
     McaFilter(McaFilter &c) = delete; // deleting copy constructor
 
     void logCommit() { mbf.commit(); }
+    
+    //Hard saturation
+    bool saturate_min(double& x, double threshold, double& x_dot);
+    bool saturate_max(double& x, double threshold, double& x_dot);
+
     Matrix3d angular_to_gimbal_matrix(double a1, double a2, double a3);
     Matrix3d get_R_process(double roll, double pitch, double yaw);
     Matrix3d get_T_process(double roll, double pitch, double yaw);

@@ -277,7 +277,7 @@ public:
                     this->plugInSession = PlugInSession::IDLE;
                     std::cout << "PluginSession idled in do0wat";
                     reply_to_control_socket("ENDSESSION", 10);
-                    this->mc.logCommit(); // Writes the log file
+                   // this->mc.logCommit(); // Writes the log file
                 }
             }
 

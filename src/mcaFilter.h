@@ -48,7 +48,7 @@ template <typename T> T clamp(const T &n, const T &lower, const T &upper)
 
 class McaFilter {
 private:
-    MemLogger mbf{ 1024 * 1024 * 20, "cueingLog_" };
+    //MemLogger mbf{ 1024 * 1024 * 20, "cueingLog_" };
     std::map<std::string, double> paramMap;
 
     double t{};     // actual sample time
@@ -110,7 +110,7 @@ public:
     }
     McaFilter(McaFilter &c) = delete; // deleting copy constructor
 
-    void logCommit() { mbf.commit(); }
+    //void logCommit() { mbf.commit(); }
     
     //Hard saturation
     bool saturate_min(double& x, double threshold, double& x_dot);

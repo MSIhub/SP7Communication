@@ -135,11 +135,13 @@ void McaFilter::filtering(float data[NUM_DATA])
 	/*Frame transformation*/
 	Matrix3d R_process = get_R_process(roll, pitch, yaw);
 
-	Vector3d f_g = R_process * Vector3d{ f_ggz, f_ggx, f_ggy + a_g };
+	//Vector3d f_g = R_process * Vector3d{ f_ggz, f_ggx, f_ggy + a_g };
+	Vector3d f_g =  Vector3d{ f_ggz, f_ggx, f_ggy };
 
-	Matrix3d T_process = get_T_process(roll, pitch, yaw);
+	//Matrix3d T_process = get_T_process(roll, pitch, yaw);
 
-	Vector3d w_g = R_process * T_process * Vector3d{ vyaw, vpitch, vroll };
+	//Vector3d w_g = R_process * T_process * Vector3d{ vyaw, vpitch, vroll };
+	Vector3d w_g = Vector3d{ vroll, -vpitch, -vyaw };
 
 	/*Insert filter logic here*/
 	if (init_run)
@@ -223,20 +225,6 @@ void McaFilter::getData(double data[NUM_DATA])
 	data[9] = theta_dot_h[0];
 	data[10] = theta_dot_h[1];
 	data[11] = theta_dot_h[2];
-
-	//data[0] = 0.002;
-	//data[1] = 0.002;
-	//data[2] = 0.396;
-	//data[3] = 0.03;
-	//data[4] = -0.03;
-	//data[5] = 0.09;
-
-	//data[6] = 0.010;
-	//data[7] = 0.010;
-	//data[8] = 0.000;
-	//data[9] = 0.01;
-	//data[10] = 0.01;
-	//data[11] = 0.02;
 }
 
 void McaFilter::logFilteredData(double data[NUM_DATA], double timestamp)

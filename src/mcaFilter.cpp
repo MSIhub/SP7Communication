@@ -4,7 +4,7 @@ bool McaFilter::saturate_min(double& x, double threshold, double& x_dot)
 {
 	if (x < threshold) {
 		x = threshold;
-		x_dot = 0.0;
+		//x_dot = 0.0;//Setting the velocity to zero reduces significantly the responsiveness of the next motion 
 		return true;
 	}
 	return false;
@@ -14,7 +14,7 @@ bool McaFilter::saturate_max(double& x, double threshold, double& x_dot)
 {
 	if (x > threshold) {
 		x = threshold;
-		x_dot = 0.0;
+		//x_dot = 0.0; //Setting the velocity to zero reduces significantly the responsiveness of the next motion 
 		return true;
 	}
 	return false;
@@ -42,12 +42,16 @@ Matrix3d McaFilter::get_R_process(double roll, double pitch, double yaw)
 {
   Matrix3d R_p;
 
-  R_p << cos(pitch) * cos(roll),
-      sin(yaw) * sin(roll) + cos(yaw) * cos(roll) * sin(pitch),
-      cos(roll) * sin(yaw) * sin(pitch) - cos(yaw) * sin(roll), -sin(pitch),
-      cos(yaw) * cos(pitch), cos(pitch) * sin(yaw), cos(pitch) * sin(roll),
-      cos(yaw) * sin(pitch) * sin(roll) - cos(roll) * sin(yaw),
-      cos(yaw) * cos(roll) + sin(yaw) * sin(pitch) * sin(roll);
+  //R_p << cos(pitch) * cos(roll),
+  //    sin(yaw) * sin(roll) + cos(yaw) * cos(roll) * sin(pitch),
+  //    cos(roll) * sin(yaw) * sin(pitch) - cos(yaw) * sin(roll), -sin(pitch),
+  //    cos(yaw) * cos(pitch), cos(pitch) * sin(yaw), cos(pitch) * sin(roll),
+  //    cos(yaw) * sin(pitch) * sin(roll) - cos(roll) * sin(yaw),
+  //    cos(yaw) * cos(roll) + sin(yaw) * sin(pitch) * sin(roll);
+
+  R_p << cos(pitch) * cos(yaw), -cos(pitch) * sin(yaw), sin(pitch),
+	  sin(roll)* sin(pitch)* cos(yaw) + cos(roll) * sin(yaw), -sin(roll) * sin(pitch) * sin(yaw) + cos(roll) * cos(yaw), -sin(roll) * cos(pitch),
+	  -cos(roll) * sin(pitch) * cos(yaw) + sin(roll) * sin(yaw), cos(roll)* sin(pitch)* sin(yaw) + sin(roll) * cos(yaw), cos(roll)* cos(pitch);
 
   return R_p;
 }
@@ -132,16 +136,18 @@ void McaFilter::filtering(float data[NUM_DATA])
 	double vpitch = data[8] * pi_180;
 	double vyaw = data[9] * pi_180;
 
+	
 	/*Frame transformation*/
-	Matrix3d R_process = get_R_process(roll, pitch, yaw);
-
-	//Vector3d f_g = R_process * Vector3d{ f_ggz, f_ggx, f_ggy + a_g };
-	Vector3d f_g =  Vector3d{ f_ggz, f_ggx, f_ggy };
-
-	//Matrix3d T_process = get_T_process(roll, pitch, yaw);
-
-	//Vector3d w_g = R_process * T_process * Vector3d{ vyaw, vpitch, vroll };
+	// Transform from OpenGl to Robot frame
+	Vector3d f_g = Vector3d{ -f_ggz, f_ggx, f_ggy };//+ a_g 
 	Vector3d w_g = Vector3d{ vroll, -vpitch, -vyaw };
+	
+	// Transform from global to local frame as the acc and vel must be relative to current pose
+	Matrix3d R_process = get_R_process(aprev[0], aprev[1], aprev[2]);
+
+	Vector3d w_g_ = R_process * w_g;
+	Vector3d f_g_ = (R_process * f_g) + posprev;
+
 
 	/*Insert filter logic here*/
 	if (init_run)
@@ -157,23 +163,23 @@ void McaFilter::filtering(float data[NUM_DATA])
 	double timestamp = 0.0;
 
 	//Translational channel
-	cue_translational_channel(f_g[0], t, &high_pass_kernel[0], paramMap["k_ax"], 0, c_ax, &(pose->x), &(velocity->vx), &timestamp);
-	cue_translational_channel(f_g[1], t, &high_pass_kernel[0], paramMap["k_ay"], 1, c_ay, &(pose->y), &(velocity->vy), &timestamp);
-	cue_translational_channel(f_g[2], t, &high_pass_kernel[0], paramMap["k_az"], 2, c_az, &(pose->z), &(velocity->vz), &timestamp);
+	cue_translational_channel(f_g_[0], t, &high_pass_kernel[0], paramMap["k_ax"], 0, c_ax, &(pose->x), &(velocity->vx), &timestamp);
+	cue_translational_channel(f_g_[1], t, &high_pass_kernel[0], paramMap["k_ay"], 1, c_ay, &(pose->y), &(velocity->vy), &timestamp);
+	cue_translational_channel(f_g_[2], t, &high_pass_kernel[0], paramMap["k_az"], 2, c_az, &(pose->z), &(velocity->vz), &timestamp);
 
 
 	// Tilt coordination channel
 	double tilt_y = 0.0;
-	cue_tilt_coordination_channel(f_g[0], t, &low_pass_kernel[0], paramMap["k_ax"], 0, c_tcx, &tilt_y, &timestamp);
+	cue_tilt_coordination_channel(f_g_[0], t, &low_pass_kernel[0], paramMap["k_ax"], 0, c_tcx, &tilt_y, &timestamp);
 	double tilt_x = 0.0;
-	cue_tilt_coordination_channel(f_g[1], t, &low_pass_kernel[0], paramMap["k_ay"], 1, c_tcy, &tilt_x, &timestamp);
+	cue_tilt_coordination_channel(f_g_[1], t, &low_pass_kernel[0], paramMap["k_ay"], 1, c_tcy, &tilt_x, &timestamp);
 
 	// Rotational channel
-	cue_rotational_channel(w_g[0], t, &high_pass_kernel[0], paramMap["k_vroll"], 3, c_vroll, &(pose->roll), &(velocity->vroll), &timestamp);
-	pose->roll += tilt_x; // adding tilt effect
-	cue_rotational_channel(w_g[1], t, &high_pass_kernel[0], paramMap["k_vpitch"], 4, c_vpitch, &(pose->pitch), &(velocity->vpitch), &timestamp);
-	pose->pitch += tilt_y;// adding tilt effect
-	cue_rotational_channel(w_g[2], t, &high_pass_kernel[0], paramMap["k_vyaw"], 5, c_vyaw, &(pose->yaw), &(velocity->vyaw), &timestamp);
+	cue_rotational_channel(w_g_[0], t, &high_pass_kernel[0], paramMap["k_vroll"], 3, c_vroll, &(pose->roll), &(velocity->vroll), &timestamp);
+	//pose->roll += tilt_x; // adding tilt effect
+	cue_rotational_channel(w_g_[1], t, &high_pass_kernel[0], paramMap["k_vpitch"], 4, c_vpitch, &(pose->pitch), &(velocity->vpitch), &timestamp);
+	//pose->pitch += tilt_y;// adding tilt effect
+	cue_rotational_channel(w_g_[2], t, &high_pass_kernel[0], paramMap["k_vyaw"], 5, c_vyaw, &(pose->yaw), &(velocity->vyaw), &timestamp);
 
 	//Pack the output
 	pos[0] = pose->x;
@@ -194,16 +200,19 @@ void McaFilter::filtering(float data[NUM_DATA])
 	(void)saturate_max(pos[0], xMaxLimit, vel[0]);
 	(void)saturate_max(pos[1], yMaxLimit, vel[1]);
 	(void)saturate_max(pos[2], zMaxLimit, vel[2]);
-	(void)saturate_min(pos[0], xMinLimit, vel[0]);
-	(void)saturate_min(pos[1], yMinLimit, vel[1]);
-	(void)saturate_min(pos[2], zMinLimit, vel[2]);
-
 	(void)saturate_max(a[0], thetaxMaxLimit, theta_dot_h[0]);
 	(void)saturate_max(a[1], thetayMaxLimit, theta_dot_h[1]);
 	(void)saturate_max(a[2], thetazMaxLimit, theta_dot_h[2]);
+
+	(void)saturate_min(pos[0], xMinLimit, vel[0]);
+	(void)saturate_min(pos[1], yMinLimit, vel[1]);
+	(void)saturate_min(pos[2], zMinLimit, vel[2]);
 	(void)saturate_min(a[0], thetaxMinLimit, theta_dot_h[0]);
 	(void)saturate_min(a[1], thetayMinLimit, theta_dot_h[1]);
 	(void)saturate_min(a[2], thetazMinLimit, theta_dot_h[2]);
+
+	posprev = pos;
+	aprev = a;
 
 	delete pose, velocity;
 	

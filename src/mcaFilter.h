@@ -57,6 +57,7 @@ private:
     double b_g{9.81};
 
     Vector3d aprev{ 0, 0, 0 };
+    Vector3d posprev{ 0, 0, 0 };
     Vector3d a{ 0, 0, 0 };
     Vector3d pos{ 0, 0, 0.005 };
     Vector3d vel{ 0, 0, 0 };

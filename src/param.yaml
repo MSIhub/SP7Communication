@@ -1,9 +1,9 @@
 k_ax: 0.00005
 k_ay: 0.00001
 k_az: 0.0005
-k_vroll: 0.5
+k_vroll: 0.25
 k_vpitch: 0.25
-k_vyaw: 0.5
+k_vyaw: 0.25
 hp_ax: 0.0086
 hp_ay: 0.0086
 hp_az: 0.0086

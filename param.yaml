@@ -5,11 +5,11 @@ k_vroll: 0.35
 k_vpitch: 0.35
 k_vyaw: 0.35
 hp_ax: 0.0086
-hp_ay: 0.0086
-hp_az: 0.0086
-hp_vroll: 0.0255
-hp_vpitch: 0.0255
+hp_ay: 0.0082
+hp_az: 0.0081
+hp_vroll: 0.0252
+hp_vpitch: 0.0254
 hp_vyaw: 0.0094
 lp_ax: 0.0085
-lp_ay: 0.0085
-lp_az: 0.0085
+lp_ay: 0.0081
+

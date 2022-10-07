@@ -28,6 +28,8 @@ void filtering::calc_kernel_high_pass(int filter_length, double cut_off, double*
 	if (isLogging)
 	{
 		std::string log_filename = "high_pass_kernel_";
+		log_filename += std::to_string(cut_off);
+		log_filename += "_";
 		log_filename += std::to_string(std::time(nullptr));
 		log_filename += ".dat";
 
@@ -69,11 +71,13 @@ void filtering::calc_kernel_low_pass(int filter_length, double cut_off, double* 
 	if (isLogging)
 	{
 		std::string log_filename = "low_pass_kernel_";
+		log_filename += std::to_string(cut_off);
+		log_filename += "_";
 		log_filename += std::to_string(std::time(nullptr));
 		log_filename += ".dat";
 
 		std::fstream output_sig_rt_kernel_fptr;
-		output_sig_rt_kernel_fptr.open("log" + log_filename, std::fstream::in | std::fstream::out | std::fstream::app);
+		output_sig_rt_kernel_fptr.open("log/" + log_filename, std::fstream::in | std::fstream::out | std::fstream::app);
 
 		if (output_sig_rt_kernel_fptr.is_open())
 		{

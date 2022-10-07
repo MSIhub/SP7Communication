@@ -9,6 +9,7 @@
 #include "MemBuf.h"
 #include "filtering.h"
 #include <Eigen/Dense>
+#include <windows.h>
 using namespace Eigen;
 
 #define SOFTSATURATION
@@ -63,11 +64,18 @@ private:
     Vector3d vel{ 0, 0, 0 };
     Vector3d theta_dot_h{ 0, 0, 0 };
 
-	double high_pass_kernel[KERNEL_LENGTH];
-	double low_pass_kernel[KERNEL_LENGTH];
+	double high_pass_kernel_ax[KERNEL_LENGTH];
+	double high_pass_kernel_ay[KERNEL_LENGTH];
+	double high_pass_kernel_az[KERNEL_LENGTH];
+	double high_pass_kernel_vroll[KERNEL_LENGTH];
+	double high_pass_kernel_vpitch[KERNEL_LENGTH];
+	double high_pass_kernel_vyaw[KERNEL_LENGTH];
+
+	double low_pass_kernel_ax[KERNEL_LENGTH];
+	double low_pass_kernel_ay[KERNEL_LENGTH];
+
     bool init_run;
     
-
     //CueData
 	filtering::CueData* c_ax;
 	filtering::CueData* c_ay;
@@ -82,13 +90,17 @@ private:
     bool log_data;
 	std::string delimiter = "\t"; //tab limited text file with 8 point precision
     std::fstream log_fptr;
-    std::string log_filename = "log_data_";
+    std::string log_filename = "log/log_data_";
 
 public:
     void loadParams();
     void printParams();
     McaFilter():init_run(true), log_data(true)
     {
+        if (!(CreateDirectory(L"log", NULL) || ERROR_ALREADY_EXISTS == GetLastError()))
+            log_data = false;// Error in creating log folder just logging disabled
+
+
         loadParams();
 		// Init CueData
 		c_ax = new filtering::CueData{};
@@ -102,11 +114,12 @@ public:
         //
         filtering::initial_time = 0.0;
 
-    #pragma region Log data
-		log_filename += std::to_string(std::time(nullptr));
-		log_filename += ".log";
-		log_fptr.open(log_filename, std::fstream::out | std::fstream::app);
-    #pragma endregion
+        if (log_data)
+        {
+		    log_filename += std::to_string(std::time(nullptr));
+		    log_filename += ".log";
+		    log_fptr.open(log_filename, std::fstream::out | std::fstream::app);
+        }
 
     }
     McaFilter(McaFilter &c) = delete; // deleting copy constructor

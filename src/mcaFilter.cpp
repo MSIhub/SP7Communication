@@ -86,7 +86,8 @@ Vector3d McaFilter::tilt_cord(Vector3d f_L)
 
 void McaFilter::loadParams()
 {
-	std::string filename = "src/param.yaml";
+	//std::string filename = "src/param.yaml";
+	std::string filename = "param.yaml";
 	std::ifstream param;
 
 
@@ -163,23 +164,23 @@ void McaFilter::filtering(float data[NUM_DATA])
 	double timestamp = 0.0;
 
 	//Translational channel
-	cue_translational_channel(f_g_[0], t, &high_pass_kernel[0], paramMap["k_ax"], 0, c_ax, &(pose->x), &(velocity->vx), &timestamp);
-	cue_translational_channel(f_g_[1], t, &high_pass_kernel[0], paramMap["k_ay"], 1, c_ay, &(pose->y), &(velocity->vy), &timestamp);
-	cue_translational_channel(f_g_[2], t, &high_pass_kernel[0], paramMap["k_az"], 2, c_az, &(pose->z), &(velocity->vz), &timestamp);
+	cue_translational_channel(f_g_[0], t, &high_pass_kernel_ax[0], paramMap["k_ax"], 0, c_ax, &(pose->x), &(velocity->vx), &timestamp);
+	cue_translational_channel(f_g_[1], t, &high_pass_kernel_ay[0], paramMap["k_ay"], 1, c_ay, &(pose->y), &(velocity->vy), &timestamp);
+	cue_translational_channel(f_g_[2], t, &high_pass_kernel_az[0], paramMap["k_az"], 2, c_az, &(pose->z), &(velocity->vz), &timestamp);
 
 
 	// Tilt coordination channel
 	double tilt_y = 0.0;
-	cue_tilt_coordination_channel(f_g_[0], t, &low_pass_kernel[0], paramMap["k_ax"], 0, c_tcx, &tilt_y, &timestamp);
+	cue_tilt_coordination_channel(f_g_[0], t, &low_pass_kernel_ax[0], paramMap["k_ax"], 0, c_tcx, &tilt_y, &timestamp);
 	double tilt_x = 0.0;
-	cue_tilt_coordination_channel(f_g_[1], t, &low_pass_kernel[0], paramMap["k_ay"], 1, c_tcy, &tilt_x, &timestamp);
+	cue_tilt_coordination_channel(f_g_[1], t, &low_pass_kernel_ay[0], paramMap["k_ay"], 1, c_tcy, &tilt_x, &timestamp);
 
 	// Rotational channel
-	cue_rotational_channel(w_g_[0], t, &high_pass_kernel[0], paramMap["k_vroll"], 3, c_vroll, &(pose->roll), &(velocity->vroll), &timestamp);
+	cue_rotational_channel(w_g_[0], t, &high_pass_kernel_vroll[0], paramMap["k_vroll"], 3, c_vroll, &(pose->roll), &(velocity->vroll), &timestamp);
 	//pose->roll += tilt_x; // adding tilt effect
-	cue_rotational_channel(w_g_[1], t, &high_pass_kernel[0], paramMap["k_vpitch"], 4, c_vpitch, &(pose->pitch), &(velocity->vpitch), &timestamp);
+	cue_rotational_channel(w_g_[1], t, &high_pass_kernel_vpitch[0], paramMap["k_vpitch"], 4, c_vpitch, &(pose->pitch), &(velocity->vpitch), &timestamp);
 	//pose->pitch += tilt_y;// adding tilt effect
-	cue_rotational_channel(w_g_[2], t, &high_pass_kernel[0], paramMap["k_vyaw"], 5, c_vyaw, &(pose->yaw), &(velocity->vyaw), &timestamp);
+	cue_rotational_channel(w_g_[2], t, &high_pass_kernel_vyaw[0], paramMap["k_vyaw"], 5, c_vyaw, &(pose->yaw), &(velocity->vyaw), &timestamp);
 
 	//Pack the output
 	pos[0] = pose->x;
@@ -268,6 +269,14 @@ void McaFilter::reset()
 void McaFilter::calculateKernels()
 {
 	//Kernel calculation beforehand
-	filtering::calc_kernel_high_pass(KERNEL_LENGTH, paramMap["hp_ax"], &high_pass_kernel[0], log_data);
-	filtering::calc_kernel_low_pass(KERNEL_LENGTH, paramMap["lp_ax"], &low_pass_kernel[0], log_data);
+	filtering::calc_kernel_high_pass(KERNEL_LENGTH, paramMap["hp_ax"], &high_pass_kernel_ax[0], log_data);
+	filtering::calc_kernel_high_pass(KERNEL_LENGTH, paramMap["hp_ay"], &high_pass_kernel_ay[0], log_data);
+	filtering::calc_kernel_high_pass(KERNEL_LENGTH, paramMap["hp_az"], &high_pass_kernel_az[0], log_data);
+	filtering::calc_kernel_high_pass(KERNEL_LENGTH, paramMap["hp_vroll"], &high_pass_kernel_vroll[0], log_data);
+	filtering::calc_kernel_high_pass(KERNEL_LENGTH, paramMap["hp_vpitch"], &high_pass_kernel_vpitch[0], log_data);
+	filtering::calc_kernel_high_pass(KERNEL_LENGTH, paramMap["hp_vyaw"], &high_pass_kernel_vyaw[0], log_data);
+
+
+	filtering::calc_kernel_low_pass(KERNEL_LENGTH, paramMap["lp_ax"], &low_pass_kernel_ax[0], log_data);
+	filtering::calc_kernel_low_pass(KERNEL_LENGTH, paramMap["lp_ay"], &low_pass_kernel_ay[0], log_data);
 }

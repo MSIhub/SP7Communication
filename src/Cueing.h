@@ -323,7 +323,7 @@ public:
                 mc.getData(filteredData);
                 mc.logFilteredData(filteredData, data[0]);
 
-                log->info(" sr:  [{}] {} {}", dt, data[0], filteredData[0]);
+               // log->info(" sr:  [{}] {} {}", dt, data[0], filteredData[0]);
                 if (gracePeriod > 0)
                 {
                     gracePeriod--;
@@ -340,7 +340,7 @@ public:
                         msgToSp7.ee_target_data.velocities[i]
                             = filteredData[i + 6] * (1 << 16);
                     }
-                    std::cout << msgToSp7.packet_id <<'\n';
+                    //std::cout << msgToSp7.packet_id <<'\n';
                     std::error_code ignored_error;
                     sp7Socket.send_to(asio::buffer((void*)&msgToSp7, sizeof(msgToSp7)),
                         receiver_endpoint, 0, ignored_error);
@@ -446,7 +446,7 @@ public:
                     for (int i = 0; i < 12; ++i)
                         rsample[i].addSample(data[i], dt);
 
-                    log->info(" pin: [{}] {}", dt, data[0]);
+                   // log->info(" pin: [{}] {}", dt, data[0]);
                 }
 
                 do_receive_plugin_socket();
